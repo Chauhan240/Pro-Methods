@@ -1,5 +1,6 @@
 import Link from "next/link"
-import { Dumbbell } from "lucide-react"
+import Image from "next/image"
+import { Instagram, Youtube } from "lucide-react"
 
 export function Footer() {
   return (
@@ -8,12 +9,28 @@ export function Footer() {
         <div className="grid md:grid-cols-4 gap-8">
           <div>
             <Link href="/" className="flex items-center gap-2 mb-4">
-              <Dumbbell className="h-8 w-8 text-primary" />
+              <Image
+                src="/logos/pm-logo.jpg"
+                alt="Pro Methods Gym"
+                width={40}
+                height={40}
+                className="h-10 w-10 rounded-full object-cover"
+              />
               <span className="text-xl font-bold">PRO METHODS</span>
             </Link>
             <p className="text-sm text-muted-foreground">
               Transform your body, elevate your life with our comprehensive fitness platform.
             </p>
+            <div className="flex gap-4 mt-6">
+              <Link href="https://www.instagram.com/promethodsgymofficial/?hl=en" target="_blank" className="text-muted-foreground hover:text-pink-500 transition-colors">
+                <Instagram className="h-6 w-6" />
+                <span className="sr-only">Instagram</span>
+              </Link>
+              <Link href="https://www.youtube.com/@promethods2462" target="_blank" className="text-muted-foreground hover:text-red-500 transition-colors">
+                <Youtube className="h-6 w-6" />
+                <span className="sr-only">YouTube</span>
+              </Link>
+            </div>
           </div>
 
           <div>

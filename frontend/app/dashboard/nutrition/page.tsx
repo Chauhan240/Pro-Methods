@@ -1,8 +1,9 @@
 "use client"
 
 import type React from "react"
-
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { nutritionApi, MealLog } from "@/lib/api"
+import { useAuth } from "@/lib/auth-context"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -18,57 +19,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { Utensils, Plus, Flame, Droplet, Beef, Cookie, Apple, Coffee, Moon, Sun } from "lucide-react"
+import { Utensils, Plus, Flame, Droplet, Beef, Cookie, Apple, Coffee, Moon, Sun, Trash2 } from "lucide-react"
 import { cn } from "@/lib/utils"
+import { toast } from "sonner"
 
 const dailyGoals = {
-  calories: { current: 1850, target: 2400 },
-  protein: { current: 142, target: 180 },
-  carbs: { current: 180, target: 250 },
-  fat: { current: 58, target: 80 },
-  water: { current: 6, target: 8 },
+  calories: { target: 2400 },
+  protein: { target: 180 },
+  carbs: { target: 250 },
+  fat: { target: 80 },
+  water: { target: 8 },
 }
-
-const meals = [
-  {
-    id: 1,
-    type: "Breakfast",
-    icon: Coffee,
-    time: "7:30 AM",
-    foods: [
-      { name: "Oatmeal with Berries", calories: 320, protein: 12, carbs: 54, fat: 6 },
-      { name: "Greek Yogurt", calories: 150, protein: 15, carbs: 8, fat: 5 },
-      { name: "Black Coffee", calories: 5, protein: 0, carbs: 1, fat: 0 },
-    ],
-  },
-  {
-    id: 2,
-    type: "Lunch",
-    icon: Sun,
-    time: "12:30 PM",
-    foods: [
-      { name: "Grilled Chicken Salad", calories: 450, protein: 42, carbs: 18, fat: 22 },
-      { name: "Whole Wheat Bread", calories: 120, protein: 4, carbs: 22, fat: 2 },
-    ],
-  },
-  {
-    id: 3,
-    type: "Snack",
-    icon: Apple,
-    time: "3:30 PM",
-    foods: [{ name: "Protein Shake", calories: 280, protein: 35, carbs: 12, fat: 8 }],
-  },
-  {
-    id: 4,
-    type: "Dinner",
-    icon: Moon,
-    time: "7:00 PM",
-    foods: [
-      { name: "Salmon Fillet", calories: 350, protein: 34, carbs: 0, fat: 15 },
-      { name: "Brown Rice", calories: 175, protein: 4, carbs: 65, fat: 0 },
-    ],
-  },
-]
 
 const mealPlans = [
   {
@@ -95,14 +56,7 @@ const mealPlans = [
     description: "Balanced plan for maintaining weight",
     active: false,
   },
-  {
-    id: 4,
-    name: "Keto",
-    calories: 2000,
-    protein: 140,
-    description: "Low carb, high fat ketogenic diet",
-    active: false,
-  },
+  // Keto Removed as requested
 ]
 
 const foodDatabase = [
@@ -114,13 +68,102 @@ const foodDatabase = [
   { name: "Sweet Potato (1 medium)", calories: 103, protein: 2.3, carbs: 24, fat: 0.1 },
   { name: "Avocado (1/2)", calories: 161, protein: 2, carbs: 8.5, fat: 14.7 },
   { name: "Almonds (1 oz)", calories: 164, protein: 6, carbs: 6, fat: 14 },
+  // Indian Items
+  { name: "Roti (1 piece)", calories: 120, protein: 3, carbs: 18, fat: 3.7 },
+  { name: "Dal Tadka (1 bowl)", calories: 240, protein: 7, carbs: 12, fat: 5 },
+  { name: "Paneer Butter Masala (1 bowl)", calories: 400, protein: 12, carbs: 10, fat: 25 },
+  { name: "Idli (2 pieces)", calories: 120, protein: 4, carbs: 24, fat: 0.5 },
+  { name: "Dosa (1 plain)", calories: 133, protein: 3, carbs: 23, fat: 3 },
+  { name: "Chole Bhature (1 serving)", calories: 450, protein: 14, carbs: 50, fat: 20 },
+  { name: "Biryani (Chicken 1 plate)", calories: 600, protein: 30, carbs: 60, fat: 25 },
+  { name: "Samosa (1 piece)", calories: 260, protein: 3, carbs: 24, fat: 18 },
+  { name: "Palak Paneer (1 bowl)", calories: 340, protein: 10, carbs: 6, fat: 15 },
+  { name: "Rajma Chawal (1 plate)", calories: 420, protein: 12, carbs: 65, fat: 8 },
 ]
 
 export default function NutritionPage() {
-  const [selectedMeal, setSelectedMeal] = useState<string | null>(null)
-  const [waterCount, setWaterCount] = useState(dailyGoals.water.current)
+  const { token } = useAuth()
+  const [selectedMeal, setSelectedMeal] = useState<string>("Breakfast")
+  const [waterCount, setWaterCount] = useState(0)
   const [showAddFood, setShowAddFood] = useState(false)
   const [newFood, setNewFood] = useState("")
+  const [mealLogs, setMealLogs] = useState<MealLog[]>([])
+  const [currentMacros, setCurrentMacros] = useState({ calories: 0, protein: 0, carbs: 0, fat: 0 })
+
+  useEffect(() => {
+    if (token) {
+      loadNutritionData()
+    }
+  }, [token])
+
+  const loadNutritionData = async () => {
+    try {
+      const data = await nutritionApi.getTodayNutrition(token!)
+      setMealLogs(data.meal_logs)
+      setWaterCount(data.water_intake)
+      calculateMacros(data.meal_logs)
+    } catch (error) {
+      console.error("Failed to load nutrition data", error)
+    }
+  }
+
+  const calculateMacros = (logs: MealLog[]) => {
+    const macros = logs.reduce((acc, log) => ({
+      calories: acc.calories + log.calories,
+      protein: acc.protein + log.protein,
+      carbs: acc.carbs + log.carbs,
+      fat: acc.fat + log.fat,
+    }), { calories: 0, protein: 0, carbs: 0, fat: 0 })
+    setCurrentMacros(macros)
+  }
+
+  const handleAddFood = async (foodItem: typeof foodDatabase[0]) => {
+    if (!token) return
+
+    try {
+      const newLog = await nutritionApi.addMealLog(token, {
+        meal_type: selectedMeal,
+        food_name: foodItem.name,
+        calories: foodItem.calories,
+        protein: foodItem.protein,
+        carbs: foodItem.carbs,
+        fat: foodItem.fat
+      })
+
+      const updatedLogs = [...mealLogs, newLog]
+      setMealLogs(updatedLogs)
+      calculateMacros(updatedLogs)
+      setShowAddFood(false)
+      setNewFood("")
+      toast.success("Food added successfully")
+    } catch (error) {
+      toast.error("Failed to add food")
+    }
+  }
+
+  const handleRemoveFood = async (mealId: number) => {
+    if (!token) return
+
+    try {
+      await nutritionApi.deleteMealLog(token, mealId)
+      const updatedLogs = mealLogs.filter(m => m.id !== mealId)
+      setMealLogs(updatedLogs)
+      calculateMacros(updatedLogs)
+      toast.success("Food removed")
+    } catch (error) {
+      toast.error("Failed to remove food")
+    }
+  }
+
+  const handleWaterUpdate = async (count: number) => {
+    if (!token) return
+    setWaterCount(count)
+    try {
+      await nutritionApi.updateWaterIntake(token, count)
+    } catch (error) {
+      console.error("Failed to update water", error)
+    }
+  }
 
   const MacroCircle = ({
     label,
@@ -166,17 +209,19 @@ export default function NutritionPage() {
         </div>
         <p className="text-sm font-medium mt-2">{label}</p>
         <p className="text-xs text-muted-foreground">
-          {current}g / {target}g
+          {Math.round(current)}g / {target}g
         </p>
       </div>
     )
   }
 
+  const getMealsByType = (type: string) => mealLogs.filter(log => log.meal_type === type)
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Nutrition & Diet</h1>
-        <p className="text-muted-foreground">Track your meals and manage your nutrition goals</p>
+        <p className="text-muted-foreground">Track your meals, manage goals, and stay hydrated.</p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
@@ -185,7 +230,7 @@ export default function NutritionPage() {
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Flame className="h-5 w-5 text-primary" />
-                {"Today's Macros"}
+                {"Today's Macros"} (Auto-refresh)
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -208,12 +253,12 @@ export default function NutritionPage() {
                       stroke="oklch(0.75 0.18 55)"
                       strokeWidth="12"
                       fill="none"
-                      strokeDasharray={`${(dailyGoals.calories.current / dailyGoals.calories.target) * 440} 440`}
+                      strokeDasharray={`${Math.min((currentMacros.calories / dailyGoals.calories.target) * 440, 440)} 440`}
                       strokeLinecap="round"
                     />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center">
-                    <span className="text-3xl font-bold">{dailyGoals.calories.current}</span>
+                    <span className="text-3xl font-bold">{Math.round(currentMacros.calories)}</span>
                     <span className="text-sm text-muted-foreground">/ {dailyGoals.calories.target} cal</span>
                   </div>
                 </div>
@@ -222,21 +267,21 @@ export default function NutritionPage() {
               <div className="flex justify-around">
                 <MacroCircle
                   label="Protein"
-                  current={dailyGoals.protein.current}
+                  current={currentMacros.protein}
                   target={dailyGoals.protein.target}
                   color="#ef4444"
                   icon={Beef}
                 />
                 <MacroCircle
                   label="Carbs"
-                  current={dailyGoals.carbs.current}
+                  current={currentMacros.carbs}
                   target={dailyGoals.carbs.target}
                   color="#3b82f6"
                   icon={Cookie}
                 />
                 <MacroCircle
                   label="Fat"
-                  current={dailyGoals.fat.current}
+                  current={currentMacros.fat}
                   target={dailyGoals.fat.target}
                   color="#eab308"
                   icon={Droplet}
@@ -266,15 +311,15 @@ export default function NutritionPage() {
                   <div className="space-y-4 py-4">
                     <div>
                       <Label>Meal</Label>
-                      <Select value={selectedMeal || ""} onValueChange={setSelectedMeal}>
+                      <Select value={selectedMeal} onValueChange={setSelectedMeal}>
                         <SelectTrigger>
                           <SelectValue placeholder="Select meal" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="breakfast">Breakfast</SelectItem>
-                          <SelectItem value="lunch">Lunch</SelectItem>
-                          <SelectItem value="snack">Snack</SelectItem>
-                          <SelectItem value="dinner">Dinner</SelectItem>
+                          <SelectItem value="Breakfast">Breakfast</SelectItem>
+                          <SelectItem value="Lunch">Lunch</SelectItem>
+                          <SelectItem value="Snack">Snack</SelectItem>
+                          <SelectItem value="Dinner">Dinner</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -293,10 +338,7 @@ export default function NutritionPage() {
                           <div
                             key={food.name}
                             className="flex items-center justify-between p-3 rounded-lg bg-secondary hover:bg-secondary/80 cursor-pointer transition-colors"
-                            onClick={() => {
-                              setShowAddFood(false)
-                              setNewFood("")
-                            }}
+                            onClick={() => handleAddFood(food)}
                           >
                             <div>
                               <p className="font-medium text-sm">{food.name}</p>
@@ -313,38 +355,54 @@ export default function NutritionPage() {
               </Dialog>
             </CardHeader>
             <CardContent className="space-y-4">
-              {meals.map((meal) => {
-                const mealCalories = meal.foods.reduce((sum, f) => sum + f.calories, 0)
-                const mealProtein = meal.foods.reduce((sum, f) => sum + f.protein, 0)
+              {["Breakfast", "Lunch", "Snack", "Dinner"].map((type) => {
+                const typeLogs = getMealsByType(type)
+                if (typeLogs.length === 0) return null
+
+                const mealCalories = typeLogs.reduce((sum, f) => sum + f.calories, 0)
+                const mealProtein = typeLogs.reduce((sum, f) => sum + f.protein, 0)
 
                 return (
-                  <div key={meal.id} className="p-4 rounded-lg bg-secondary">
+                  <div key={type} className="p-4 rounded-lg bg-secondary">
                     <div className="flex items-center justify-between mb-3">
                       <div className="flex items-center gap-3">
                         <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                          <meal.icon className="h-5 w-5 text-primary" />
+                          {type === "Breakfast" && <Coffee className="h-5 w-5 text-primary" />}
+                          {type === "Lunch" && <Sun className="h-5 w-5 text-primary" />}
+                          {type === "Snack" && <Apple className="h-5 w-5 text-primary" />}
+                          {type === "Dinner" && <Moon className="h-5 w-5 text-primary" />}
                         </div>
                         <div>
-                          <p className="font-semibold">{meal.type}</p>
-                          <p className="text-xs text-muted-foreground">{meal.time}</p>
+                          <p className="font-semibold">{type}</p>
+                          <p className="text-xs text-muted-foreground">{typeLogs.length} items</p>
                         </div>
                       </div>
                       <div className="text-right">
                         <p className="font-semibold">{mealCalories} cal</p>
-                        <p className="text-xs text-muted-foreground">{mealProtein}g protein</p>
+                        <p className="text-xs text-muted-foreground">{Math.round(mealProtein)}g protein</p>
                       </div>
                     </div>
                     <div className="space-y-2">
-                      {meal.foods.map((food, i) => (
-                        <div key={i} className="flex items-center justify-between text-sm py-2 border-t border-border">
-                          <span>{food.name}</span>
-                          <span className="text-muted-foreground">{food.calories} cal</span>
+                      {typeLogs.map((item) => (
+                        <div key={item.id} className="flex items-center justify-between text-sm py-2 border-t border-border group">
+                          <span>{item.food_name}</span>
+                          <div className="flex items-center gap-3">
+                            <span className="text-muted-foreground">{item.calories} cal</span>
+                            <Button variant="ghost" size="icon" className="h-6 w-6 text-destructive opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => handleRemoveFood(item.id)}>
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 )
               })}
+              {mealLogs.length === 0 && (
+                <div className="text-center py-8 text-muted-foreground">
+                  No meals logged today. Start adding food!
+                </div>
+              )}
             </CardContent>
           </Card>
         </div>
@@ -362,7 +420,7 @@ export default function NutritionPage() {
                 {Array.from({ length: dailyGoals.water.target }).map((_, i) => (
                   <button
                     key={i}
-                    onClick={() => setWaterCount(i + 1)}
+                    onClick={() => handleWaterUpdate(i + 1)}
                     className={cn(
                       "h-10 w-10 rounded-lg flex items-center justify-center transition-all",
                       i < waterCount ? "bg-blue-500 text-white" : "bg-secondary hover:bg-secondary/80",

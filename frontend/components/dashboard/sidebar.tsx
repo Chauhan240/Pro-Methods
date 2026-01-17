@@ -2,6 +2,7 @@
 
 import Link from "next/link"
 import { usePathname, useRouter } from "next/navigation"
+import Image from "next/image"
 import {
   LayoutDashboard,
   Dumbbell,
@@ -61,13 +62,25 @@ export function Sidebar() {
       <div className="h-16 flex items-center justify-between px-4 border-b border-border">
         {!collapsed && (
           <Link href="/" className="flex items-center gap-2">
-            <Dumbbell className="h-8 w-8 text-primary" />
+            <Image
+              src="/logos/pm-logo.jpg"
+              alt="Pro Methods Gym"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-full object-cover"
+            />
             <span className="font-bold text-lg">PRO METHODS</span>
           </Link>
         )}
         {collapsed && (
           <Link href="/">
-            <Dumbbell className="h-8 w-8 text-primary mx-auto" />
+            <Image
+              src="/logos/pm-logo.jpg"
+              alt="Pro Methods Gym"
+              width={32}
+              height={32}
+              className="h-8 w-8 rounded-full object-cover mx-auto"
+            />
           </Link>
         )}
         <Button

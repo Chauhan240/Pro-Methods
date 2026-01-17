@@ -1,13 +1,15 @@
 "use client"
 
 import { useState } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Progress } from "@/components/ui/progress"
 import { Dumbbell, Clock, Flame, Play, Check, ChevronRight, Zap, Heart, Target } from "lucide-react"
 import { cn } from "@/lib/utils"
+// Import the new component
+import { MyWorkoutRoutine } from "@/components/dashboard/my-workout-routine"
 
 const workoutCategories = [
   { id: "all", name: "All Programs", icon: Dumbbell },
@@ -99,12 +101,16 @@ export default function WorkoutsPage() {
         <p className="text-muted-foreground">Track your workouts and explore specialized programs</p>
       </div>
 
-      <Tabs defaultValue="today" className="space-y-6">
+      <Tabs defaultValue="routine" className="space-y-6">
         <TabsList className="bg-secondary">
+          <TabsTrigger value="routine">My Routine</TabsTrigger>
           <TabsTrigger value="today">{"Today's Workout"}</TabsTrigger>
           <TabsTrigger value="programs">Programs</TabsTrigger>
-          <TabsTrigger value="history">History</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="routine" className="space-y-4">
+          <MyWorkoutRoutine />
+        </TabsContent>
 
         <TabsContent value="today" className="space-y-6">
           <Card className="bg-card border-border overflow-hidden">
@@ -271,42 +277,6 @@ export default function WorkoutsPage() {
               </Card>
             ))}
           </div>
-        </TabsContent>
-
-        <TabsContent value="history" className="space-y-4">
-          <Card className="bg-card border-border">
-            <CardHeader>
-              <CardTitle>Workout History</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {[
-                { date: "Jan 6", name: "Lower Body Strength", duration: "48 min", calories: 380 },
-                { date: "Jan 5", name: "Upper Body Power", duration: "55 min", calories: 450 },
-                { date: "Jan 4", name: "Yoga Flow", duration: "35 min", calories: 180 },
-                { date: "Jan 3", name: "HIIT Cardio", duration: "30 min", calories: 420 },
-                { date: "Jan 2", name: "Core & Abs", duration: "25 min", calories: 220 },
-              ].map((workout, i) => (
-                <div
-                  key={i}
-                  className="flex items-center justify-between p-4 rounded-lg bg-secondary hover:bg-secondary/80 transition-colors"
-                >
-                  <div className="flex items-center gap-4">
-                    <div className="h-10 w-10 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <Dumbbell className="h-5 w-5 text-primary" />
-                    </div>
-                    <div>
-                      <p className="font-medium">{workout.name}</p>
-                      <p className="text-sm text-muted-foreground">{workout.date}</p>
-                    </div>
-                  </div>
-                  <div className="text-right text-sm">
-                    <p className="font-medium">{workout.duration}</p>
-                    <p className="text-muted-foreground">{workout.calories} cal</p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
         </TabsContent>
       </Tabs>
     </div>

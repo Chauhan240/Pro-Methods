@@ -1,0 +1,62 @@
+# Deployment Guide
+
+This guide helps you deploy the Pro Methods application (Frontend + Backend) to a Digital Ocean Droplet (Ubuntu).
+
+## Prerequisites
+
+1.  **Digital Ocean Droplet:** Created with Ubuntu 20.04 or 22.04 LTS.
+2.  **SSH Access:** You should be connected to your droplet via terminal (e.g., `ssh root@your_ip`).
+
+## Step 1: Transfer Code to Server
+
+Since you are not using a Git repository, you can upload your project files directly. From your **local machine** (Windows PowerShell), run:
+
+```powershell
+# Zip the project first (excludes node_modules and venv to save time)
+# You might need to install 7zip or use standard compress if available.
+# Or simpler: use SCP if you have Git Bash or OpenSSH installed on Windows.
+
+scp -r "c:/Users/hp/Documents/My Projects/Pro Methods" root@YOUR_DROPLET_IP:/var/www/pro_methods
+```
+
+*Note: Replace `YOUR_DROPLET_IP` with your actual server IP.*
+
+## Step 2: Run Deployment Script
+
+1.  SSH into your server:
+    ```bash
+    ssh root@YOUR_DROPLET_IP
+    ```
+
+2.  Navigate to the uploaded directory:
+    ```bash
+    cd /var/www/pro_methods
+    ```
+
+3.  Make the script executable and run it:
+    ```bash
+    chmod +x deployment/setup.sh
+    ./deployment/setup.sh
+    ```
+
+## Step 3: Finalize Configuration
+
+The script creates a dummy `.env` file in `backend/.env` if one didn't exist. You **must** edit this file to add your real secrets (Database URL, JWT Secret, Google Credentials, Twilio keys).
+
+```bash
+nano backend/.env
+```
+
+After editing `.env`, restart the backend:
+
+```bash
+pm2 restart pro-backend
+```
+
+## Useful Commands
+
+-   **Check Logs:**
+    -   Backend: `pm2 logs pro-backend`
+    -   Frontend: `pm2 logs pro-frontend`
+-   **Restart All:** `pm2 restart all`
+-   **Monitor:** `pm2 monit`

@@ -1,0 +1,115 @@
+# Deploying Recent Changes to Digital Ocean
+
+Since you have made changes to the **Frontend** (Testimonials, Tutorials, Navigation, Login Fixes) and potentially some **Backend** tweaks (Twilio fix), here is how to deploy everything.
+
+## 1. Domain Setup (promethodsgym.com)
+
+Since you purchased the domain `promethodsgym.com`, you need to point it to your Digital Ocean droplet IP (`206.189.130.181`).
+
+### Step A: Configure DNS (Where you bought the domain)
+1.  Log in to your domain registrar (GoDaddy, Namecheap, etc.).
+2.  Find the **DNS Management** or **Name Server** settings.
+3.  Create an **A Record**:
+    *   **Host/Name:** `@` (or leave blank)
+    *   **Value/Target:** `206.189.130.181`
+    *   **TTL:** Automatic or 3600
+4.  Create a **CNAME Record**:
+    *   **Host/Name:** `www`
+    *   **Value/Target:** `promethodsgym.com` (or `@`)
+    *   **TTL:** Automatic
+
+*Note: DNS changes can take up to 24-48 hours to propagate, but usually happen within minutes.*
+
+### Step B: Configure Nginx on Droplet
+We need to tell Nginx to respond to your new domain name.
+
+1.  SSH into your droplet:
+    ```bash
+    ssh root@206.189.130.181
+    ```
+
+2.  Edit the Nginx configuration:
+    ```bash
+    nano /etc/nginx/sites-available/pro_methods
+    ```
+
+3.  Update the `server_name` line to include your domain:
+    ```nginx
+    server {
+        listen 80;
+        server_name 206.189.130.181 promethodsgym.com www.promethodsgym.com;
+        ...
+    ```
+
+4.  Test and Reload Nginx:
+    ```bash
+    nginx -t
+    systemctl reload nginx
+    ```
+
+## 2. Deploying Files
+
+You need to upload the latest code from your local machine to the server.
+
+### Option A: Using SCP (Command Line)
+Run this command from your local machine (Windows PowerShell):
+
+```powershell
+# Upload proper Deployment files first (Safety check)
+scp "deployment/nginx.conf" root@206.189.130.181:/var/www/pro_methods/deployment/
+
+# Upload Backend (Only main.py usually needed if requirements didn't change, but good to sync)
+scp "backend/main.py" root@206.189.130.181:/var/www/pro_methods/backend/
+
+# Upload Frontend (Source code only - we build on server)
+# Exclude node_modules and .next to save time/bandwidth
+scp -r "frontend/app" "frontend/components" "frontend/lib" "frontend/public" "frontend/package.json" root@206.189.130.181:/var/www/pro_methods/frontend/
+```
+*Note: The above command might be tedious to type for every folder. A recursive copy of the whole frontend folder (excluding hidden/heavy stuff) is easier if you have a good tool like WinSCP or FileZilla.*
+
+**Recommended: Use FileZilla (GUI)**
+1.  Connect to `206.189.130.181` with username `root` and your SSH key/password.
+2.  Navigate to `/var/www/pro_methods/frontend` on the server.
+3.  Upload your local `frontend` folder contents to overwrite the server ones. **Do NOT upload `node_modules` or `.next` folders.**
+
+## 3. Rebuilding the App
+
+Once files are uploaded, you must rebuild the frontend on the server.
+
+1.  SSH into the server:
+    ```bash
+    ssh root@206.189.130.181
+    ```
+
+2.  Go to frontend and install new dependencies (we added framer-motion, embla-carousel):
+    ```bash
+    cd /var/www/pro_methods/frontend
+    rm -rf .next
+    npm install
+    ```
+
+3.  Build and Restart:
+    ```bash
+    # Ensure ID is empty to avoid build crash if you haven't set it in .env.local on server (our code now handles this safety)
+    npm run build
+    pm2 restart pro-frontend
+    ```
+
+4.  Restart Backend (if you changed python code):
+    ```bash
+    pm2 restart pro-backend
+    ```
+
+## 4. SSL (HTTPS) - Highly Recommended
+
+Once your domain `promethodsgym.com` is pointing to the IP and working, you should enable HTTPS for security.
+
+1.  Install Certbot:
+    ```bash
+    sudo apt install certbot python3-certbot-nginx
+    ```
+2.  Run Certbot:
+    ```bash
+    sudo certbot --nginx -d promethodsgym.com -d www.promethodsgym.com
+    ```
+3.  Follow the prompts. It will automatically update your Nginx config to serve over HTTPS.

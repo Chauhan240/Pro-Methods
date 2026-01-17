@@ -1,0 +1,69 @@
+# Deployment Fixes Guide
+
+You are encountering environmental issues:
+1.  **CORS Error** with `localhost:8000`: Happens because your **Frontend** (on server) is trying to talk to `localhost` (your user's browser machine), which fails.
+2.  **Connection Timeout** with `206.189.130.181:8000`: Happens because Port 8000 is likely blocked by the firewall (UFW) on Digital Ocean.
+
+## Solution
+
+We will fix this by simply using the **Nginx Proxy** on Port 80, which is already configured.
+
+### 1. Frontend Configuration (Local - on Windows before upload)
+
+Open `frontend/.env.local` (or `.env.production` if you have it) and set:
+
+```ini
+# Do NOT include :8000. Just the base IP.
+NEXT_PUBLIC_API_URL=http://206.189.130.181
+```
+
+**Why?**
+-   Nginx is listening on Port 80 (default HTTP port).
+-   Requests to `http://206.189.130.181/api/...` are automatically forwarded by Nginx to `localhost:8000` internally.
+-   This bypasses the firewall issue on port 8000.
+-   This fixes CORS because both frontend and backend are on the same domain/IP.
+
+### 2. Backend Configuration (Server)
+
+Ensure your backend allows requests from everywhere. Ensure `backend/main.py` has:
+
+```python
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], # Allow all for now
+    ...
+)
+```
+
+### 3. Apply Changes (Redeploy)
+
+**Step A:** Update files and upload again.
+```powershell
+scp -r "c:/Users/hp/Documents/My Projects/Pro Methods" root@206.189.130.181:/var/www/pro_methods
+```
+
+**Step B:** SSH into server and Rebuild.
+```bash
+ssh root@206.189.130.181
+cd /var/www/pro_methods
+
+# 1. Update Backend
+pm2 restart pro-backend
+
+# 2. Update Frontend (Must rebuild to bake in the new API URL)
+cd frontend
+# Ensure the env var is set for the build
+export NEXT_PUBLIC_API_URL=http://206.189.130.181
+npm run build
+pm2 restart pro-frontend
+```
+
+### Option B: Brute Force (Enable Port 8000)
+
+If you *really* want to use `http://206.189.130.181:8000`, run this on the server:
+
+```bash
+chmod +x deployment/fix_firewall.sh
+./deployment/fix_firewall.sh
+```
+Then you can use `NEXT_PUBLIC_API_URL=http://206.189.130.181:8000` in your frontend config.

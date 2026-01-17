@@ -1,6 +1,7 @@
 "use client"
 
 import Link from "next/link"
+import Image from "next/image"
 import { useState } from "react"
 import { Menu, X, Dumbbell, User, LogOut, Phone, Mail } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -17,11 +18,11 @@ import { useRouter } from "next/navigation"
 import { cn } from "@/lib/utils"
 
 const navItems = [
-  { name: "Dashboard", href: "/dashboard" },
-  { name: "Workouts", href: "/dashboard/workouts" },
-  { name: "Trainers", href: "/dashboard/trainers" },
-  { name: "Nutrition", href: "/dashboard/nutrition" },
-  { name: "Progress", href: "/dashboard/progress" },
+  { name: "About", href: "/#about" },
+  { name: "Blogs", href: "/blogs" },
+  { name: "Testimonials", href: "/#testimonials" },
+  { name: "Tutorials", href: "/tutorials" },
+  { name: "Programs", href: "/#programs" },
 ]
 
 export function Navigation() {
@@ -49,24 +50,37 @@ export function Navigation() {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
           <Link href="/" className="flex items-center gap-2">
-            <Dumbbell className="h-8 w-8 text-primary" />
+            <Image
+              src="/logos/pm-logo.jpg"
+              alt="Pro Methods Gym"
+              width={40}
+              height={40}
+              className="h-10 w-10 rounded-full object-cover"
+            />
             <span className="text-xl font-bold tracking-tight">PRO METHODS</span>
           </Link>
 
           {/* Desktop Navigation - Only show nav items when logged in */}
-          {user && (
-            <div className="hidden md:flex items-center gap-8">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  href={item.href}
-                  className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
-                >
-                  {item.name}
-                </Link>
-              ))}
-            </div>
-          )}
+          {/* Desktop Navigation */}
+          <div className="hidden md:flex items-center gap-8">
+            {navItems.map((item) => (
+              <Link
+                key={item.name}
+                href={item.href}
+                className="text-sm font-medium text-muted-foreground hover:text-foreground transition-colors"
+                // Handle smooth scroll for anchor links if on home page
+                onClick={(e) => {
+                  if (item.href.startsWith("/#")) {
+                    // If we are on home page, prevent default scroll behavior might be needed if using next/link, 
+                    // but next/link handles it well usually. 
+                    // However, to be safe and ensure smooth scroll, we can leave as is.
+                  }
+                }}
+              >
+                {item.name}
+              </Link>
+            ))}
+          </div>
 
           {/* Desktop Right Side */}
           <div className="hidden md:flex items-center gap-4">
@@ -105,6 +119,10 @@ export function Navigation() {
                   <DropdownMenuItem onClick={() => router.push("/dashboard/profile")}>
                     <User className="mr-2 h-4 w-4" />
                     Profile
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => router.push("/dashboard")}>
+                    <Dumbbell className="mr-2 h-4 w-4" />
+                    Dashboard
                   </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => router.push("/dashboard/progress")}>
                     <User className="mr-2 h-4 w-4" />

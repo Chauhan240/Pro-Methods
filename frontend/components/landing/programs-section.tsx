@@ -25,7 +25,7 @@ const programs = [
 
 export function ProgramsSection() {
   return (
-    <section className="py-24">
+    <section id="programs" className="py-24">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-12">
           <div>

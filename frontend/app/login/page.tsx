@@ -32,6 +32,8 @@ export default function LoginPage() {
   const [otpSent, setOtpSent] = useState(false);
   const [devOtp, setDevOtp] = useState<string>("");
 
+  const [activeTab, setActiveTab] = useState("email");
+
   const handleEmailLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -55,16 +57,17 @@ export default function LoginPage() {
       const response = await api.sendOTP(phoneForm.phone);
       setOtpSent(true);
 
-      if (response.otp_code_dev) {
-        // Development mode - OTP displayed on screen
+      if (response && response.otp_code_dev) {
+        // Development mode
         setDevOtp(response.otp_code_dev);
+        // @ts-ignore
         if (response.sms_sent === false) {
           toast.success(`Development Mode: Use OTP ${response.otp_code_dev}`);
         } else {
-          toast.success(`OTP sent! Code: ${response.otp_code_dev}`);
+          toast.success(`OTP sent to developer console! Code: ${response.otp_code_dev}`);
         }
       } else {
-        // Production mode - SMS sent successfully
+        // Production mode
         toast.success("OTP sent to your phone via SMS!");
       }
     } catch (error: any) {
@@ -110,7 +113,7 @@ export default function LoginPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Tabs defaultValue="email" className="w-full">
+          <Tabs defaultValue="email" className="w-full" onValueChange={setActiveTab}>
             <TabsList className="grid w-full grid-cols-2">
               <TabsTrigger value="email">
                 <Mail className="mr-2 h-4 w-4" />
@@ -240,8 +243,38 @@ export default function LoginPage() {
 
 function GoogleLoginButton() {
   const router = useRouter();
-  const { loginWithGoogle } = useAuth();
 
+  // Conditionally call hook or handle missing env var gracefully
+  // Note: we can't conditionally call hooks easily in React. 
+  // But we can check env var before rendering the component that uses the hook.
+  // Actually, keeping the hook here will crash if Provider is missing.
+  // So we must move the hook usage into a child component or only render this button if env var exists.
+  // The caller (this file) must do the check.
+
+  // Wait, I can't move the hook call inside an 'if'.
+  // I will make the 'GoogleLoginButton' component just return disabled button if no env var, 
+  // BUT the hook 'useGoogleLogin' will verify context at call time.
+  // We need to NOT call 'useGoogleLogin' if env var is missing.
+
+  // Solution: Split into SafeGoogleLoginButton and Placeholder.
+  const hasClientId = !!process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID;
+
+  if (!hasClientId) {
+    return (
+      <Button disabled variant="outline" className="w-full">
+        <svg className="mr-2 h-4 w-4" viewBox="0 0 24 24">
+          <path fill="currentColor" d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm1 15h-2v-2h2v2zm0-4h-2V7h2v6z" />
+        </svg>
+        Google Login Disabled
+      </Button>
+    )
+  }
+
+  return <ActualGoogleLoginButton router={router} />;
+}
+
+function ActualGoogleLoginButton({ router }: { router: any }) {
+  const { loginWithGoogle } = useAuth();
   const login = useGoogleLogin({
     onSuccess: async (tokenResponse) => {
       try {
@@ -283,5 +316,5 @@ function GoogleLoginButton() {
       </svg>
       Continue with Google
     </Button>
-  );
+  )
 }

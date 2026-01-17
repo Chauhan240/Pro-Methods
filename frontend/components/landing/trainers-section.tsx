@@ -35,7 +35,7 @@ const trainers = [
 
 export function TrainersSection() {
   return (
-    <section className="py-24 bg-card">
+    <section id="trainers" className="py-24 bg-card">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-12">
           <div>

@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '';
 
 export interface User {
   id: number;
@@ -13,7 +13,63 @@ export interface User {
   is_verified: boolean;
   auth_provider: string;
   profile_picture?: string;
+  weight?: number;
+  height?: number;
   created_at: string;
+}
+
+export interface AuthorInfo {
+  id: number;
+  full_name: string;
+  first_name?: string;
+  last_name?: string;
+  profile_picture?: string;
+}
+
+export interface Blog {
+  id: number;
+  title: string;
+  slug: string;
+  content: string;
+  description?: string;
+  author_id: number;
+  author: AuthorInfo;
+  cover_image?: string;
+  video_links?: string[];
+  is_published: boolean;
+  published_at?: string;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface BlogListItem {
+  id: number;
+  title: string;
+  slug: string;
+  description?: string;
+  author: AuthorInfo;
+  cover_image?: string;
+  is_published: boolean;
+  published_at?: string;
+  created_at: string;
+}
+
+export interface BlogCreateRequest {
+  title: string;
+  content: string;
+  description?: string;
+  cover_image?: string;
+  video_links?: string[];
+  is_published: boolean;
+}
+
+export interface BlogUpdateRequest {
+  title?: string;
+  content?: string;
+  description?: string;
+  cover_image?: string;
+  video_links?: string[];
+  is_published?: boolean;
 }
 
 export interface AuthResponse {
@@ -165,6 +221,8 @@ export const api = {
       last_name?: string | null;
       date_of_birth?: string | null;
       gender?: string;
+      weight?: number | null;
+      height?: number | null;
     }
   ): Promise<User> {
     const response = await fetch(`${API_BASE_URL}/api/auth/profile`, {
@@ -206,4 +264,260 @@ export const api = {
 
     return response.json();
   },
+
+  async getBlogs(): Promise<BlogListItem[]> {
+    const response = await fetch(`${API_BASE_URL}/api/blogs`);
+    if (!response.ok) {
+      throw new Error("Failed to fetch blogs");
+    }
+    return response.json();
+  },
+
+  async getBlogBySlug(slug: string): Promise<Blog> {
+    const response = await fetch(`${API_BASE_URL}/api/blogs/${slug}`);
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to fetch blog");
+    }
+    return response.json();
+  },
+
+  async createBlog(token: string, blogData: BlogCreateRequest): Promise<Blog> {
+    const response = await fetch(`${API_BASE_URL}/api/blogs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(blogData),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to create blog");
+    }
+
+    return response.json();
+  },
+
+  async updateBlog(
+    token: string,
+    blogId: number,
+    blogData: BlogUpdateRequest
+  ): Promise<Blog> {
+    const response = await fetch(`${API_BASE_URL}/api/blogs/${blogId}`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(blogData),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to update blog");
+    }
+
+    return response.json();
+  },
+
+  async deleteBlog(token: string, blogId: number): Promise<{ message: string }> {
+    const response = await fetch(`${API_BASE_URL}/api/blogs/${blogId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to delete blog");
+    }
+
+    return response.json();
+  },
+
+  async uploadImage(file: File, title?: string): Promise<{ url: string }> {
+    const formData = new FormData();
+    formData.append("file", file);
+    if (title) {
+      formData.append("title", title);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/api/upload`, {
+      method: "POST",
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to upload image");
+    }
+
+    return response.json();
+  },
 };
+
+export interface WorkoutExercise {
+  id?: number;
+  body_part: string;
+  exercise_name: string;
+  weight?: number;
+  reps?: number;
+  sets?: number;
+}
+
+export interface WorkoutLog {
+  id: number;
+  user_id: number;
+  date: string;
+  created_at: string;
+  updated_at: string;
+  exercises: WorkoutExercise[];
+}
+
+export interface WorkoutLogCreate {
+  date: string;
+  exercises: WorkoutExercise[];
+}
+
+export const workoutApi = {
+  async getWorkoutLogs(token: string): Promise<WorkoutLog[]> {
+    const response = await fetch(`${API_BASE_URL}/api/workout_logs`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch workout logs");
+    }
+    return response.json();
+  },
+
+  async getWorkoutLogByDate(token: string, date: string): Promise<WorkoutLog | null> {
+    const response = await fetch(`${API_BASE_URL}/api/workout_logs/${date}`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (response.status === 404) {
+      return null;
+    }
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch workout log");
+    }
+    return response.json();
+  },
+
+  async createWorkoutLog(token: string, data: WorkoutLogCreate): Promise<WorkoutLog> {
+    const response = await fetch(`${API_BASE_URL}/api/workout_logs`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const error = await response.json();
+      throw new Error(error.detail || "Failed to save workout log");
+    }
+
+    return response.json();
+  },
+};
+
+export interface MealLog {
+  id: number;
+  daily_nutrition_id: number;
+  meal_type: string;
+  food_name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+  created_at: string;
+}
+
+export interface MealLogCreate {
+  meal_type: string;
+  food_name: string;
+  calories: number;
+  protein: number;
+  carbs: number;
+  fat: number;
+}
+
+export interface DailyNutrition {
+  id: number;
+  user_id: number;
+  date: string;
+  water_intake: number;
+  meal_logs: MealLog[];
+}
+
+export const nutritionApi = {
+  async getTodayNutrition(token: string): Promise<DailyNutrition> {
+    const response = await fetch(`${API_BASE_URL}/api/nutrition/today`, {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to fetch nutrition logs");
+    }
+    return response.json();
+  },
+
+  async addMealLog(token: string, data: MealLogCreate): Promise<MealLog> {
+    const response = await fetch(`${API_BASE_URL}/api/nutrition/meals`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to add meal");
+    }
+    return response.json();
+  },
+
+  async deleteMealLog(token: string, mealId: number): Promise<void> {
+    const response = await fetch(`${API_BASE_URL}/api/nutrition/meals/${mealId}`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to delete meal");
+    }
+  },
+
+  async updateWaterIntake(token: string, count: number): Promise<DailyNutrition> {
+    const response = await fetch(`${API_BASE_URL}/api/nutrition/water`, {
+      method: "PUT",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ water_intake: count }),
+    });
+
+    if (!response.ok) {
+      throw new Error("Failed to update water intake");
+    }
+    return response.json();
+  },
+};
+
